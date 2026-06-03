@@ -1,87 +1,101 @@
-# Relay — a native iOS AI agent
+<h1 align="center">🛰️ Relay</h1>
 
-A small, native SwiftUI app that turns natural language into multi-step actions.
-You type a request; Relay streams a response token-by-token, and when a question
-needs an exact answer it **calls a tool** (calculator, clock, …), shows that work
-inline, then continues reasoning until it can reply.
+<p align="center">
+  <strong>A native iOS AI agent built in SwiftUI.</strong><br>
+  Type in natural language → it streams a response, calls tools mid-reasoning,<br>
+  and shows its work — on-device-ready, vendor-agnostic, production-minded.
+</p>
 
-Built to demonstrate the intersection that the Apple *AI Experiences* team works
-in: **on-device-first AI, expressed through a polished native interface, with
-production-grade engineering underneath.**
-
----
-
-## What it shows
-
-- **Agentic, multi-step reasoning** — a real tool-calling loop (plan → act →
-  observe → continue), not a single prompt/response.
-- **Streaming UX** — Server-Sent Events parsed live; text appears as it's
-  generated, tool calls render inline as they happen.
-- **Swift concurrency** — `async/await`, `AsyncThrowingStream`, and a
-  `withThrowingTaskGroup` that runs multiple tools in parallel.
-- **Clean architecture** — the entire app is written against an `AgentProvider`
-  protocol, so the **on-device Apple Intelligence model** and a **cloud model**
-  are interchangeable (one line in `RelayApp.swift`).
-- **Apple-platform fundamentals** — `@Observable` + `@MainActor` state, Keychain
-  credential storage, native SwiftUI throughout, unit tests on the core logic.
+<p align="center">
+  <img src="https://img.shields.io/badge/Swift-5.9-orange?logo=swift&logoColor=white" alt="Swift">
+  <img src="https://img.shields.io/badge/SwiftUI-iOS%2017+-blue?logo=apple&logoColor=white" alt="SwiftUI">
+  <img src="https://img.shields.io/badge/concurrency-async%2Fawait-green" alt="Concurrency">
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey" alt="License">
+</p>
 
 ---
 
-## Run it
+## ✨ What it does
 
-1. Open Xcode 16+ and create a new **iOS App** named `Relay` (SwiftUI, Swift).
-2. Delete the generated `ContentView.swift`, then drag every file from the
-   `Relay/` folder here into the project, preserving the group structure
-   (Models, Services, Tools, ViewModels, Views).
-3. Add the `RelayTests/` file to the test target.
-4. Build and run on the simulator or a device.
-5. Tap the gear icon and paste an Anthropic API key (stored in the Keychain).
-6. Try: **"What's 18% of 240, and what's today's date?"** — watch it call the
-   calculator and clock tools, then answer.
+Relay is a conversational AI agent that runs as a native iOS app. You ask a
+question; it streams the answer token by token, and when an exact answer is
+needed it **calls a tool** (calculator, clock, …), shows that step inline, then
+keeps reasoning until it can reply.
 
-> **On-device mode:** the project includes a `FoundationModelsProvider` gated
-> behind `#if canImport(FoundationModels)`. Build with the SDK that ships Apple's
+It was built to demonstrate one specific intersection: **on-device-first AI,
+delivered through a polished native interface, with production-grade engineering
+underneath.**
+
+> **Example:** *"What's 18% of 240, and what's today's date?"*
+> → Relay calls `calculator`, calls `current_datetime`, then answers in one reply.
+
+<!--
+  📸 SCREENSHOT / DEMO GIF GOES HERE.
+  After you build and run the app, record a short clip of the agent streaming a
+  response and calling a tool inline, then drop it in:
+
+  <p align="center"><img src="docs/demo.gif" width="320" alt="Relay demo"></p>
+
+  A real GIF here is worth more than any paragraph — it proves the app runs.
+-->
+
+---
+
+## 🧠 Architecture
+
+<p align="center">
+  <img src="docs/architecture.png" width="760" alt="Relay architecture diagram">
+</p>
+
+The whole app is written against a single **`AgentProvider`** protocol — the
+vendor-neutral seam. That's what lets Apple's on-device Foundation Models and a
+cloud model be interchangeable (a one-line change in `RelayApp.swift`).
+
+- **`AgentEngine`** owns the loop — *plan → act → observe → repeat* — running
+  tools in parallel via a task group and stopping on a final answer or step cap.
+- **`AnthropicProvider`** parses Server-Sent Events live: text deltas surface
+  immediately, while tool-call arguments (which arrive as JSON fragments across
+  many events) are reassembled before the tool runs.
+- **`ChatViewModel`** is `@MainActor` + `@Observable`, so every UI mutation is
+  main-thread-safe by construction.
+
+Full design rationale and trade-offs in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+---
+
+## 🛠 Tech stack
+
+| Area | What |
+|------|------|
+| UI | SwiftUI, `@Observable`, `@MainActor` |
+| Concurrency | `async/await`, `AsyncThrowingStream`, `withThrowingTaskGroup` |
+| Networking | `URLSession.bytes` SSE streaming |
+| AI | Tool-calling agent loop · Anthropic Messages API · Apple FoundationModels (on-device) |
+| Security | API key stored in Keychain |
+| Testing | XCTest coverage on tools + registry |
+
+---
+
+## 🚀 Run it
+
+1. Open Xcode 16+ and create a new **iOS App** named `Relay` (SwiftUI).
+2. Delete the generated `ContentView.swift`, then drag the files from `Relay/`
+   into the project, preserving the group structure.
+3. Add `RelayTests/` to the test target.
+4. Build and run, tap the gear icon, and paste an Anthropic API key (stored in
+   the Keychain).
+5. Try: **"What's 18% of 240, and what's today's date?"**
+
+> **On-device mode:** a `FoundationModelsProvider` is included behind
+> `#if canImport(FoundationModels)`. Build with the SDK that ships Apple's
 > on-device model, run on an Apple Intelligence-capable device, and switch the
-> provider line in `RelayApp.swift` — no API key needed. (Verify the
-> FoundationModels session API against your installed SDK; it's a young
-> framework.)
+> provider line in `RelayApp.swift` — no API key required.
 
 ---
 
-## Project layout
+## ➕ Adding a capability
 
-```
-Relay/
-├── RelayApp.swift            App entry; wires provider + tools + engine
-├── Models/
-│   ├── ChatMessage.swift     UI-facing transcript model
-│   └── AgentTool.swift       Tool protocol + JSON schema/value types
-├── Services/
-│   ├── AgentProvider.swift   The vendor-neutral seam (protocol + events)
-│   ├── AgentEngine.swift     The agent loop (plan → act → observe → repeat)
-│   ├── AnthropicProvider.swift   Cloud path: streaming SSE + tool use
-│   ├── FoundationModelsProvider.swift  On-device path (Apple Intelligence)
-│   ├── ToolRegistry.swift    Dispatch + argument decoding + error handling
-│   └── KeychainStore.swift   Secure API-key storage
-├── Tools/
-│   ├── CalculatorTool.swift
-│   └── DateTimeTool.swift
-├── ViewModels/
-│   └── ChatViewModel.swift   @Observable @MainActor state, stream consumer
-└── Views/
-    ├── ChatView.swift        Transcript + auto-scroll
-    ├── MessageBubbleView.swift   Bubbles + inline tool-call cards
-    ├── ComposerView.swift    Input bar with send/stop
-    └── SettingsView.swift    API key entry
-```
-
-See `ARCHITECTURE.md` for the design decisions and trade-offs.
-
----
-
-## Adding a new capability
-
-The whole point of the design: a new agent skill is one new file.
+A new agent skill is one new file:
 
 ```swift
 struct WeatherTool: AgentTool {
@@ -97,5 +111,11 @@ struct WeatherTool: AgentTool {
 }
 ```
 
-Register it in `RelayApp.swift` and the model can use it immediately. No engine,
+Register it in `RelayApp.swift` — the model can use it immediately. No engine,
 view, or view-model changes.
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE).
