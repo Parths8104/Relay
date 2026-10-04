@@ -28,6 +28,7 @@ struct AgentEngine: Sendable {
         case toolStarted(id: String, name: String, arguments: String)
         case toolFinished(id: String, result: String)
         case completed
+        case stepLimitReached(maxSteps: Int)
     }
 
     /// Run a full agent interaction. `history` is the conversation so far
@@ -102,7 +103,9 @@ struct AgentEngine: Sendable {
                         // Loop: start a fresh turn with tool results in context.
                     }
                     // Hit the step cap.
-                    continuation.yield(.completed)
+                    // Hit the step cap without reaching a final answer.
+                   // Hit the step cap without reaching a final answer.
+                    continuation.yield(.stepLimitReached(maxSteps: maxSteps))
                     continuation.finish()
                 } catch is CancellationError {
                     continuation.finish()
